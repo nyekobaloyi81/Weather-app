@@ -1,5 +1,8 @@
 # Weather App
 
+<img width="575" height="515" alt="weather" src="https://github.com/user-attachments/assets/8726ee15-9d55-4fc1-84cc-45110f99d024" />
+
+
 A lightweight weather dashboard built with HTML, CSS, and vanilla JavaScript. Search for a city to see its current conditions, then switch between Celsius and Fahrenheit. City suggestions help distinguish places with the same name.
 
 ## Features
