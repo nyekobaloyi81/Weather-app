@@ -2,7 +2,7 @@ const API_KEY = 'aad5943e214f050325618afcd9403d15';
 const API_URL = `https://api.openweathermap.org/data/2.5/weather?units=metric&appid=${API_KEY}&q=`;
 
 const searchBox = document.querySelector(".search input");
-const searchBtn = document.querySelector(".search button");
+const searchBtn = document.querySelector(".search > button");
 const weatherIcon = document.querySelector(".weather-icon");
 const convertBtn = document.querySelector(".convert");
 
@@ -14,14 +14,16 @@ searchBtn.addEventListener("click", ()=>{
 });
 //OR "Enter" is pressed in the search box
 searchBox.addEventListener("keydown", function (e) {
-    if (e.code === "Enter") {  //checks whether the pressed key is "Enter"
+    if (e.key === "Enter") {
+        e.preventDefault();
         checkWeather(searchBox.value);
     }
 });
 
 
 async function checkWeather(city_name){//API call to get weather info
-    const response = await fetch(API_URL + city_name);
+    const url = API_URL + encodeURIComponent(city_name);
+    const response = await fetch(url);
 
     if(response.status == 404){//Invalid input
         //show error message & hide weather info and convert button
@@ -29,6 +31,9 @@ async function checkWeather(city_name){//API call to get weather info
         document.querySelector(".error").style.display = "block";
         document.querySelector(".convert").style.display = "none";
         document.body.style.backgroundImage = "linear-gradient(135deg, #2e2e2e, #2e2e2e, #2e2e2e)";
+        document.body.style.backgroundSize = "cover";
+        document.body.style.backgroundPosition = "center";
+        document.body.style.animation = "none";
     }
     else{//Valid input
         var data = await response.json();
@@ -89,7 +94,7 @@ function changeIcon(img, title, background){//function to change weather icon an
     weatherIcon.src = img;
     weatherIcon.title = title;
     document.body.style.backgroundImage = background;
-    document.body.style.backgroundSize = "250%";
+    document.body.style.backgroundSize = "200% 100%";
     document.body.style.animation = "bg-animation 10s linear infinite";
 }
 
