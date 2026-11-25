@@ -5,24 +5,161 @@ const searchBox = document.querySelector(".search input");
 const searchBtn = document.querySelector(".search > button");
 const weatherIcon = document.querySelector(".weather-icon");
 const convertBtn = document.querySelector(".convert");
+const suggestionsList = document.querySelector(".city-suggestions");
+const suggestionStatus = document.querySelector(".suggestion-status");
+let suggestionTimer;
+let suggestionRequest;
+let activeSuggestion = -1;
 
 
 //Trigger the checkWeather function
 //Search button is clicked
 searchBtn.addEventListener("click", ()=>{
+    hideSuggestions();
     checkWeather(searchBox.value);
 });
 //OR "Enter" is pressed in the search box
 searchBox.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
+    const suggestions = suggestionsList.querySelectorAll(".city-suggestion");
+
+    if (e.key === "ArrowDown" && suggestions.length) {
         e.preventDefault();
-        checkWeather(searchBox.value);
+        setActiveSuggestion(Math.min(activeSuggestion + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp" && suggestions.length) {
+        e.preventDefault();
+        setActiveSuggestion(Math.max(activeSuggestion - 1, 0));
+    } else if (e.key === "Escape") {
+        hideSuggestions();
+    } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (activeSuggestion >= 0 && suggestions[activeSuggestion]) {
+            suggestions[activeSuggestion].click();
+        } else {
+            hideSuggestions();
+            checkWeather(searchBox.value);
+        }
     }
 });
 
+searchBox.addEventListener("input", () => {
+    hideSuggestions();
 
-async function checkWeather(city_name){//API call to get weather info
-    const url = API_URL + encodeURIComponent(city_name);
+    const query = searchBox.value.trim();
+    if (query.length < 2) {
+        return;
+    }
+
+    suggestionTimer = setTimeout(() => suggestCities(query), 300);
+});
+
+document.addEventListener("click", (event) => {
+    if (!event.target.closest(".search")) {
+        hideSuggestions();
+    }
+});
+
+async function suggestCities(query) {
+    const controller = new AbortController();
+    suggestionRequest = controller;
+    showSuggestionStatus("Searching cities...");
+
+    try {
+        const response = await fetch(
+            `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=5&appid=${API_KEY}`,
+            { signal: controller.signal }
+        );
+        if (!response.ok) {
+            throw new Error(`City suggestions request failed: ${response.status}`);
+        }
+
+        const cities = await response.json();
+        if (controller.signal.aborted || query !== searchBox.value.trim()) {
+            return;
+        }
+        suggestionRequest = undefined;
+        renderSuggestions(cities);
+    } catch (error) {
+        if (error.name === "AbortError") {
+            return;
+        }
+        console.error(error);
+        if (suggestionRequest === controller) {
+            suggestionRequest = undefined;
+        }
+        if (query === searchBox.value.trim()) {
+            showSuggestionStatus("Suggestions unavailable. You can still search.");
+        }
+    }
+}
+
+function renderSuggestions(cities) {
+    suggestionsList.replaceChildren();
+    activeSuggestion = -1;
+
+    if (!cities.length) {
+        showSuggestionStatus("No cities found");
+        return;
+    }
+
+    suggestionStatus.hidden = true;
+    cities.forEach((city, index) => {
+        const option = document.createElement("div");
+        option.id = `city-suggestion-${index}`;
+        option.className = "city-suggestion";
+        option.setAttribute("role", "option");
+        option.setAttribute("aria-selected", "false");
+        option.textContent = [city.name, city.state, city.country].filter(Boolean).join(", ");
+        option.addEventListener("click", () => {
+            const cityName = option.textContent;
+            searchBox.value = cityName;
+            hideSuggestions();
+            checkWeather(cityName, city);
+        });
+        suggestionsList.appendChild(option);
+    });
+
+    suggestionsList.hidden = false;
+    searchBox.setAttribute("aria-expanded", "true");
+}
+
+function showSuggestionStatus(message) {
+    suggestionsList.hidden = true;
+    suggestionStatus.textContent = message;
+    suggestionStatus.hidden = false;
+    searchBox.setAttribute("aria-expanded", "true");
+}
+
+function setActiveSuggestion(index) {
+    const suggestions = suggestionsList.querySelectorAll(".city-suggestion");
+    suggestions.forEach((suggestion, suggestionIndex) => {
+        const isActive = suggestionIndex === index;
+        suggestion.setAttribute("aria-selected", String(isActive));
+        if (isActive) {
+            searchBox.setAttribute("aria-activedescendant", suggestion.id);
+            suggestion.scrollIntoView({ block: "nearest" });
+        }
+    });
+    activeSuggestion = index;
+}
+
+function hideSuggestions() {
+    clearTimeout(suggestionTimer);
+    if (suggestionRequest) {
+        suggestionRequest.abort();
+        suggestionRequest = undefined;
+    }
+    suggestionsList.hidden = true;
+    suggestionStatus.hidden = true;
+    suggestionStatus.textContent = "";
+    searchBox.setAttribute("aria-expanded", "false");
+    searchBox.removeAttribute("aria-activedescendant");
+    activeSuggestion = -1;
+}
+
+async function checkWeather(city_name, location){//API call to get weather info
+    const url = location
+        ? `https://api.openweathermap.org/data/2.5/weather?lat=${location.lat}&lon=${location.lon}&units=metric&appid=${API_KEY}`
+        : API_URL + encodeURIComponent(city_name);
     const response = await fetch(url);
 
     if(response.status == 404){//Invalid input

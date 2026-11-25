@@ -10,7 +10,12 @@
     
     <div class="card">
         <div class="search">
-            <input type="text" placeholder="enter city name" spellcheck="false">
+            <div class="search-input-wrapper">
+                <input type="text" placeholder="enter city name" spellcheck="false" role="combobox"
+                    aria-autocomplete="list" aria-expanded="false" aria-controls="city-suggestions">
+                <div class="city-suggestions" id="city-suggestions" role="listbox" hidden></div>
+                <div class="suggestion-status" role="status" aria-live="polite" hidden></div>
+            </div>
             <button type="button" aria-label="Search city"> <img src="images/search.png" height="25"></button>
         </div>
         
